@@ -1,0 +1,1 @@
+# AWS SQS como cola de mensajería [Diseño de infraestructura]
