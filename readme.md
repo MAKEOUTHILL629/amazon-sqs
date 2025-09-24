@@ -606,5 +606,34 @@ public class FailedEvent {
 
 ### Todos los mensajes a una sola cola
 
+La aquitectura que se propone es con SQS, donde todos los eventos se envian a una sola cola, y el consumidor se encarga de procesar los mensajes y enrutar a la logica correspondiente.
 
+- Escala con picos de mensajes:  Si hay un pico de mensajes, todos se acumulan en la misma cola, lo que puede causar retrasos en el procesamiento, sin embargo, SQS escala automáticamente para manejar grandes volúmenes de mensajes y adicionalmente podriamoos escalar varias instancias de consumidores para procesar los mensajes más rápidamente.
+- Efecto Domino: Si por alguna razon el mensaje de un tipo específico causa un error en el consumidor, puede bloquear el procesamiento de todos los mensajes en la cola, ya que los mensajes se procesan en orden. Esto puede llevar a retrasos significativos si hay muchos mensajes en la cola o si el mensaje en especifico se demora en ser procesado.
+- Facil gestion de errores: Si un mensaje fallo, pero en el consumidor maneja en dos tareas en simultaneo, pero una falla, el mensaje se reintentara en la cola, sin embargo la otra tarea que si se completo, se volvera a ejecutar, lo que puede causar inconsistencias.
+- Logica de routing a nivel de app: La logica de routing de mensajes se implementa en el consumidor, lo que puede complicar el código y hacerlo más difícil de mantener.
+- Complejidad en la infraestructura: Aunque se utiliza una sola cola, la lógica de enrutamiento y procesamiento puede hacer que la infraestructura sea más sencilla, pero la complejidad se traslada al código del consumidor.
 
+### Cola por entidad
+
+Entiendase entidad como un agregado de DDD, por ejemplo si tenemos una tienda online, podriamos tener las siguientes entidades: User, Order, Product, Payment, etc.
+
+La aquitectura que se propone es con EventBridge + SQS, donde cada entidad tiene su propia cola, y los eventos se enrutan a la cola correspondiente.
+
+- Escala con picos de mensajes: Como en la anterior, SQS escala automáticamente para manejar grandes volúmenes de mensajes y adicionalmente podriamoos escalar varias instancias de consumidores para procesar los mensajes más rápidamente.
+- Evita el efecto domino: Si un mensaje de una entidad específica causa un error en el consumidor, solo afecta a los mensajes de esa entidad, permitiendo que otras entidades sigan siendo procesadas sin interrupciones.
+- Facil gestion de errores: Es igual a lo que pasaba en la anterior, si un mensaje falla, pero en el consumidor maneja en dos tareas en simultaneo, pero una falla, el mensaje se reintentara en la cola, sin embargo la otra tarea que si se completo, se volvera a ejecutar, lo que puede causar inconsistencias.
+- Logica de routing centralizada: La logica de routing de mensajes se implementa en codigo de cada entidad, lo que puede complicar el código y hacerlo más difícil de mantener, los consumidores son complejos a nivel de logica, dado que si tenemos una entidad usuarios y tenemos una entidad producto, pero hay veces que al usuario le interesa un producto, entonces el consumidor de usuarios tiene que saber de productos, lo que puede complicar el código.
+- Complejidad en la infraestructura: La infraestructura es más compleja, ya que se tienen múltiples colas y reglas de enrutamiento, pero la lógica de enrutamiento y procesamiento es más sencilla y específica para cada entidad.
+
+### Cola por caso de uso
+
+Entiendase caso de uso como una funcionalidad específica del negocio, por ejemplo si tenemos una tienda online, podriamos tener los siguientes casos de uso: SendWelcomeEmailOnUserRegistered, UpdateInventoryOnOrderPlaced, ProcessPaymentOnOrderCompleted, etc.
+
+La aquitectura que se propone es con EventBridge + SQS, donde cada caso de uso tiene su propia cola, y los eventos se enrutan a la cola correspondiente.
+
+- Escala con picos de mensajes: Como en las anteriores, SQS escala automáticamente para manejar grandes volúmenes de mensajes y adicionalmente podriamoos escalar varias instancias de consumidores para procesar los mensajes más rápidamente.
+- Evita el efecto domino: Si un mensaje de un caso de uso específico causa un error en el consumidor, solo afecta a los mensajes de ese caso de uso, permitiendo que otros casos de uso sigan siendo procesados sin interrupciones.
+- Facil gestion de errores: Si un mensaje falla, solo afecta al caso de uso específico, permitiendo que otros casos de uso sigan siendo procesados sin interrupciones.
+- Logica de routing centralizada: La logica de routing de mensajes se implementa en el EventBridge, lo que simplifica el código del consumidor, los consumidores son sencillos a nivel de logica, dado que si tenemos una entidad usuarios y tenemos una entidad producto, pero hay veces que al usuario le interesa un producto, entonces el consumidor de usuarios no tiene que saber de productos, lo que simplifica el código.
+- Complejidad en la infraestructura: La infraestructura es más compleja, ya que se tienen múltiples colas y reglas de enrutamiento, pero la lógica de enrutamiento y procesamiento es más sencilla y específica para cada caso de uso.
